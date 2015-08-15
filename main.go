@@ -108,6 +108,6 @@ func writePoints(con *client.Client, config configuration) {
 	}
 	_, err := con.Write(bps)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }
