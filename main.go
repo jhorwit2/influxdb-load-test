@@ -64,6 +64,8 @@ func (l *LoadTest) run() {
 		panic(err)
 	}
 
+	createDatabase(con, l)
+
 	durationCounter := 0
 
 	t := metrics.NewTimer()
@@ -88,6 +90,17 @@ func (l *LoadTest) run() {
 		}
 		durationCounter++
 	}
+}
+
+func createDatabase(con *client.Client, l *LoadTest) {
+	database := *l.db
+	l.Logger.Printf("creating database %s, if doesn't already exist", database)
+
+	q := client.Query{
+		Command:  fmt.Sprintf("create database %s", database),
+		Database: database,
+	}
+	con.Query(q)
 }
 
 func writePoints(con *client.Client, l *LoadTest) {
