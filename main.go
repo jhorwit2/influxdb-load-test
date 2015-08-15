@@ -15,6 +15,10 @@ import (
 	"github.com/rcrowley/go-metrics"
 )
 
+const (
+	maxConcurrent = 50
+)
+
 func main() {
 
 	loadTest := LoadTest{
@@ -24,7 +28,7 @@ func main() {
 		measurement:     flag.String("m", "load_test", "measurement"),
 		retentionPolicy: flag.String("rp", "default", "retention policy"),
 		batchSize:       flag.Int("batchSize", 5000, "batch size for requests"),
-		concurrency:     flag.Int("concurrency", 5, "requests per second"),
+		rate:            flag.Int("rate", 5, "requests per second"),
 		cpus:            flag.Int("cpus", runtime.NumCPU(), "Number of CPUs to use"),
 		duration:        flag.Int("duration", 60, "time in seconds for test to run"),
 		Logger:          log.New(os.Stderr, "main: ", log.Lmicroseconds),
@@ -51,7 +55,7 @@ type LoadTest struct {
 	measurement     *string
 	retentionPolicy *string
 	batchSize       *int
-	concurrency     *int
+	rate            *int
 	cpus            *int
 	duration        *int
 	errorMeter      metrics.Meter
@@ -79,7 +83,7 @@ func (l *LoadTest) run() {
 	metrics.Register("errorMeter", l.errorMeter)
 
 	var wg sync.WaitGroup
-	var concurrencyLimiter = make(chan int, *l.concurrency)
+	pendingWrites := make(chan int, maxConcurrent)
 
 	for _ = range time.Tick(time.Second) {
 		if durationCounter >= *l.duration {
@@ -90,16 +94,23 @@ func (l *LoadTest) run() {
 
 		l.Logger.Printf("sending more points...running for %d seconds", durationCounter+1)
 
-		for i := 0; i < *l.concurrency; i++ {
-			concurrencyLimiter <- 1
+		for i := 0; i < *l.rate; i++ {
+			if len(pendingWrites) == maxConcurrent {
+				l.Logger.Println("FATAL: max go subroutines hit...seems you should probably tweak your test so it can stay up with it")
+				// Skip the rest of the test and let the pending requests finish gracefully
+				durationCounter = *l.duration
+				break
+			}
+
+			pendingWrites <- 1
 			go func() {
 				wg.Add(1)
 				t.Time(func() {
 					writePoints(con, l)
 				})
+				<-pendingWrites
 				wg.Done()
 			}()
-			<-concurrencyLimiter
 		}
 		durationCounter++
 	}
