@@ -52,7 +52,7 @@ func main() {
 		panic(err)
 	}
 
-	// Log metrics every second
+	// Log the metrics at the end of the load test
 	go metrics.Log(metrics.DefaultRegistry, time.Duration(*config.duration)*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 
 	startLoadTest(con, config)
