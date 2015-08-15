@@ -26,6 +26,7 @@ func main() {
 		rate:            flag.Int("rate", 5, "requests per second"),
 		cpus:            flag.Int("cpus", runtime.NumCPU(), "Number of CPUs to use"),
 		duration:        flag.Int("duration", 60, "time in seconds for test to run"),
+		Logger:          log.New(os.Stderr, "main: ", log.Lmicroseconds),
 	}
 
 	flag.Parse()
@@ -49,9 +50,13 @@ type LoadTest struct {
 	rate            *int
 	cpus            *int
 	duration        *int
+	errorMeter      metrics.Meter
+	Logger          *log.Logger
 }
 
 func (l *LoadTest) run() {
+	l.Logger.Println("starting load test")
+
 	u, _ := url.Parse(fmt.Sprintf("http://%s:%d", *l.host, *l.port))
 	con, err := client.NewClient(client.Config{URL: *u})
 
@@ -64,10 +69,15 @@ func (l *LoadTest) run() {
 	t := metrics.NewTimer()
 	metrics.Register("requests", t)
 
+	l.errorMeter = metrics.NewMeter()
+	metrics.Register("errorMeter", l.errorMeter)
+
 	for _ = range time.Tick(time.Second) {
 		if durationCounter >= *l.duration {
 			return
 		}
+
+		l.Logger.Printf("sending more points...running for %d seconds", durationCounter)
 
 		for i := 0; i < *l.rate; i++ {
 			go func() {
@@ -98,6 +108,7 @@ func writePoints(con *client.Client, l *LoadTest) {
 			Fields: map[string]interface{}{
 				"value": rand.Float64(),
 			},
+			Time:      time.Now(),
 			Precision: "n",
 		}
 	}
@@ -109,6 +120,7 @@ func writePoints(con *client.Client, l *LoadTest) {
 	}
 	_, err := con.Write(bps)
 	if err != nil {
-		panic(err)
+		l.errorMeter.Mark(1)
+		log.Fatal(err)
 	}
 }
