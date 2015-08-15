@@ -62,10 +62,7 @@ func (l *LoadTest) run() {
 	l.Logger.Println("starting load test")
 
 	u, _ := url.Parse(fmt.Sprintf("http://%s:%d", *l.host, *l.port))
-	con, err := client.NewClient(client.Config{
-		URL:     *u,
-		Timeout: 4 * time.Second,
-	})
+	con, err := client.NewClient(client.Config{URL: *u})
 
 	if err != nil {
 		panic(err)
