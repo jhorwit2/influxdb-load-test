@@ -100,7 +100,11 @@ func createDatabase(con *client.Client, l *LoadTest) {
 		Command:  fmt.Sprintf("create database %s", database),
 		Database: database,
 	}
-	con.Query(q)
+
+	_, err := con.Query(q)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func writePoints(con *client.Client, l *LoadTest) {
