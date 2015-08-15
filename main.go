@@ -101,8 +101,7 @@ func createDatabase(con *client.Client, l *LoadTest) {
 		Database: database,
 	}
 
-	_, err := con.Query(q)
-	if err != nil {
+	if _, err := con.Query(q); err != nil {
 		panic(err)
 	}
 }
@@ -135,8 +134,8 @@ func writePoints(con *client.Client, l *LoadTest) {
 		Database:        *l.db,
 		RetentionPolicy: *l.retentionPolicy,
 	}
-	_, err := con.Write(bps)
-	if err != nil {
+
+	if _, err := con.Write(bps); err != nil {
 		l.errorMeter.Mark(1)
 		log.Fatal(err)
 	}
