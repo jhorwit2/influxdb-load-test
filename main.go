@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"runtime"
-	"strconv"
 	"time"
 
 	"github.com/influxdb/influxdb/client"
@@ -88,13 +87,12 @@ func writePoints(con *client.Client, config configuration) {
 		pts       = make([]client.Point, batchSize)
 	)
 
-	rand.Seed(42)
 	for i := 0; i < batchSize; i++ {
 		pts[i] = client.Point{
 			Measurement: *config.measurement,
 			Tags: map[string]string{
-				"host":   strconv.Itoa(rand.Intn(len(hosts))),
-				"metric": strconv.Itoa(rand.Intn(len(metrics))),
+				"host":   hosts[rand.Intn(len(hosts))],
+				"metric": metrics[rand.Intn(len(metrics))],
 			},
 			Fields: map[string]interface{}{
 				"value": rand.Float64(),
