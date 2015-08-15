@@ -53,7 +53,7 @@ func main() {
 	}
 
 	// Log metrics every second
-	go metrics.Log(metrics.DefaultRegistry, time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	go metrics.Log(metrics.DefaultRegistry, time.Duration(*config.duration)*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 
 	startLoadTest(con, config)
 }
@@ -62,7 +62,7 @@ func startLoadTest(con *client.Client, config configuration) {
 	durationCounter := 0
 
 	t := metrics.NewTimer()
-	metrics.Register("bang", t)
+	metrics.Register("requests", t)
 
 	for _ = range time.Tick(time.Second) {
 		if durationCounter >= *config.duration {
