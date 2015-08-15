@@ -83,7 +83,7 @@ func startLoadTest(con *client.Client, config configuration) {
 func writePoints(con *client.Client, config configuration) {
 	var (
 		hosts     = []string{"host1", "host2", "host3", "host4", "host5", "host6"}
-		metrics   = []string{"com.addthis.client.watch.Service.total._red_pjson__.1MinuteRate", "com.addthis.client.watch.Service.total._red_lojson_100eng.json.1MinuteRate", "com.addthis.client.watch.Service.total._red_lojson_300lo.json.1MinuteRate"}
+		metrics   = []string{"com.addthis.Service.total._red_pjson__.1MinuteRate", "com.addthis.Service.total._red_lojson_100eng.json.1MinuteRate", "com.addthis.Service.total._red_lojson_300lo.json.1MinuteRate"}
 		batchSize = *config.batchSize
 		pts       = make([]client.Point, batchSize)
 	)
