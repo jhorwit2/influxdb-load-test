@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/influxdb/influxdb/client"
@@ -34,9 +35,12 @@ func main() {
 	runtime.GOMAXPROCS(*loadTest.cpus)
 
 	// Log the metrics at the end of the load test
-	go metrics.Log(metrics.DefaultRegistry, time.Duration(*loadTest.duration)*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 
 	loadTest.run()
+
+	// Start the metrics writer & give it a little longer than it takes so it can write the output
+	go metrics.Log(metrics.DefaultRegistry, time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	time.Sleep(1500 * time.Millisecond)
 }
 
 // LoadTest configuration
@@ -58,7 +62,10 @@ func (l *LoadTest) run() {
 	l.Logger.Println("starting load test")
 
 	u, _ := url.Parse(fmt.Sprintf("http://%s:%d", *l.host, *l.port))
-	con, err := client.NewClient(client.Config{URL: *u})
+	con, err := client.NewClient(client.Config{
+		URL:     *u,
+		Timeout: 4 * time.Second,
+	})
 
 	if err != nil {
 		panic(err)
@@ -74,18 +81,24 @@ func (l *LoadTest) run() {
 	l.errorMeter = metrics.NewMeter()
 	metrics.Register("errorMeter", l.errorMeter)
 
+	var wg sync.WaitGroup
+
 	for _ = range time.Tick(time.Second) {
 		if durationCounter >= *l.duration {
+			// First we need to wait for all the requests to finish executing
+			wg.Wait()
 			return
 		}
 
-		l.Logger.Printf("sending more points...running for %d seconds", durationCounter)
+		l.Logger.Printf("sending more points...running for %d seconds", durationCounter+1)
 
 		for i := 0; i < *l.rate; i++ {
 			go func() {
+				wg.Add(1)
 				t.Time(func() {
 					writePoints(con, l)
 				})
+				wg.Done()
 			}()
 		}
 		durationCounter++
@@ -135,8 +148,9 @@ func writePoints(con *client.Client, l *LoadTest) {
 		RetentionPolicy: *l.retentionPolicy,
 	}
 
-	if _, err := con.Write(bps); err != nil {
+	_, err := con.Write(bps)
+	if err != nil {
 		l.errorMeter.Mark(1)
-		log.Fatal(err)
+		log.Println(err)
 	}
 }
